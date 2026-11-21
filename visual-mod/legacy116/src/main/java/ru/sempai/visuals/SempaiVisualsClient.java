@@ -7,7 +7,7 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.client.options.KeyBinding;
+import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.text.Text;
@@ -19,6 +19,7 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Properties;
 
 public final class SempaiVisualsClient implements ClientModInitializer {
@@ -33,7 +34,7 @@ public final class SempaiVisualsClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
-        optionsFile = FabricLoader.getInstance().getConfigDirectory().resolve("sempai-visuals-client.properties");
+        optionsFile = Paths.get(FabricLoader.getInstance().getConfigDirectory().getPath(), "sempai-visuals-client.properties");
         loadOptions();
         openMenu = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.sempai_visuals.open_menu", InputUtil.Type.KEYSYM, GLFW.GLFW_KEY_RIGHT_SHIFT,
@@ -51,7 +52,7 @@ public final class SempaiVisualsClient implements ClientModInitializer {
         long now = System.currentTimeMillis();
         if (now < nextThemeCheckAt) return;
         nextThemeCheckAt = now + 1000;
-        Path file = FabricLoader.getInstance().getConfigDirectory().resolve("sempai-visuals.json");
+        Path file = Paths.get(FabricLoader.getInstance().getConfigDirectory().getPath(), "sempai-visuals.json");
         if (!Files.isRegularFile(file)) return;
         try {
             String json = new String(Files.readAllBytes(file), StandardCharsets.UTF_8);
