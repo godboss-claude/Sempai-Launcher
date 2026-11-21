@@ -57,11 +57,23 @@ jobs:
           git push origin "HEAD:$env:GITHUB_REF_NAME"
           git push origin $tag
           "version=$version" >> $env:GITHUB_OUTPUT
+          "tag=$tag" >> $env:GITHUB_OUTPUT
 
-      - name: Build and publish GitHub Release
-        run: npm run build:win -- --publish always
+      - name: Build Windows installer
+        run: npm run build:win -- --publish never
+
+      - name: Publish one complete GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Sempai Launcher ${{ steps.version.outputs.version }}
+          files: |
+            release/latest.yml
+            release/Sempai-Launcher-${{ steps.version.outputs.version }}-setup.exe
+            release/Sempai-Launcher-${{ steps.version.outputs.version }}-setup.exe.blockmap
+          fail_on_unmatched_files: true
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Announce release in Telegram
         if: ${{ env.TELEGRAM_BOT_TOKEN != '' }}
