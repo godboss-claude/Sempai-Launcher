@@ -1,0 +1,8 @@
+const fs = require('fs')
+const p = require('./package.json')
+console.log(JSON.stringify({ deps: p.dependencies, dev: p.devDependencies }, null, 2))
+console.log('electron dist:', fs.existsSync('node_modules/electron/dist/electron.exe'))
+const mlc = require('minecraft-launcher-core')
+console.log('mlc keys:', Object.keys(mlc))
+const c = new mlc.Client()
+console.log('client methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(c)))

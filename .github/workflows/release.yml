@@ -1,0 +1,83 @@
+name: Build and publish launcher update
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: launcher-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  windows-release:
+    runs-on: windows-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Set up Java for visual mod builds
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check types
+        run: npm run typecheck
+
+      - name: Build visual mod versions
+        shell: pwsh
+        run: ./visual-mod/build-matrix.ps1
+
+      - name: Increment app version and create release tag
+        id: version
+        shell: pwsh
+        run: |
+          npm version patch --no-git-tag-version
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $tag = "v$version"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json
+          git commit -m "chore(release): $tag [skip ci]"
+          git tag $tag
+          git push origin "HEAD:$env:GITHUB_REF_NAME"
+          git push origin $tag
+          "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Build and publish GitHub Release
+        run: npm run build:win -- --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Announce release in Telegram
+        if: ${{ env.TELEGRAM_BOT_TOKEN != '' }}
+        shell: pwsh
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          $tag = "v$env:RELEASE_VERSION"
+          $releaseUrl = "https://github.com/${{ github.repository }}/releases/tag/$tag"
+          $body = @{
+            chat_id = '@SempaiVisuals'
+            text = "Sempai Launcher $env:RELEASE_VERSION is ready.`n`nОбновитесь кнопкой в лаунчере.`n$releaseUrl"
+            disable_web_page_preview = $true
+          } | ConvertTo-Json
+          $response = Invoke-RestMethod -Method Post `
+            -Uri "https://api.telegram.org/bot$env:TELEGRAM_BOT_TOKEN/sendMessage" `
+            -ContentType 'application/json' -Body $body
+          if (-not $response.ok) { throw 'Telegram не подтвердил публикацию сообщения.' }

@@ -1,0 +1,7 @@
+{
+  "required": true,
+  "package": "ru.sempai.visuals.mixin",
+  "compatibilityLevel": "JAVA_${java_version}",
+  "client": ["PlayerTabOverlayMixin"],
+  "injectors": { "defaultRequire": 1 }
+}

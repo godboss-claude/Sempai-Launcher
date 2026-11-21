@@ -1,0 +1,15 @@
+node_modules/
+out/
+release/*
+!release/mods/
+release/mods/*
+!release/mods/*.jar
+visual-mod/.gradle/
+visual-mod/build/
+visual-mod/legacy/.gradle/
+visual-mod/legacy/build/
+.env
+.env.*
+*.log
+*.jks
+*.keystore

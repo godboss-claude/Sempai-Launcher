@@ -1,0 +1,6 @@
+{
+ "schemaVersion":1,"id":"sempai_visuals","version":"${version}","name":"Sempai Visuals",
+ "description":"Client visual menu for Minecraft 1.12.2.","authors":["Sempai"],"license":"MIT","environment":"client",
+ "entrypoints":{"client":["ru.sempai.visuals.LegacyVisualsClient"]},"mixins":["sempai_visuals.mixins.json"],
+ "depends":{"fabricloader":">=0.15.11","minecraft":"1.12.2"}
+}
