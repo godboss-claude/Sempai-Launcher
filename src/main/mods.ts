@@ -260,6 +260,12 @@ function fabricProfileId(gameVersion: string, loaderVersion: string): string {
   return `fabric-loader-${loaderVersion}-${gameVersion}`
 }
 
+/** Legacy Fabric is the maintained Fabric fork for Minecraft 1.8–1.13. */
+function usesLegacyFabric(gameVersion: string): boolean {
+  const match = gameVersion.match(/^1\.(\d+)(?:\.|$)/)
+  return Boolean(match && Number(match[1]) >= 8 && Number(match[1]) <= 13)
+}
+
 export async function getFabricInfo(gameVersion: string): Promise<FabricInfo> {
   const version = String(gameVersion ?? '').trim()
   if (!/^\d+(?:\.\d+){1,2}(?:[-\w.]+)?$/.test(version)) {
@@ -291,8 +297,8 @@ export async function installFabric(gameVersion: string): Promise<FabricInfo> {
   const alreadyInstalled = await getFabricInfo(version)
   if (alreadyInstalled.installed) return alreadyInstalled
 
-  const legacy112 = version === '1.12.2'
-  const metadataBase = legacy112 ? 'https://meta.legacyfabric.net' : 'https://meta.fabricmc.net'
+  const legacyFabric = usesLegacyFabric(version)
+  const metadataBase = legacyFabric ? 'https://meta.legacyfabric.net' : 'https://meta.fabricmc.net'
   const loaderVersions = await modrinthJson<Array<{ loader: { version: string; stable: boolean } }>>(
     `${metadataBase}/v2/versions/loader/${encodeURIComponent(version)}`
   )
@@ -305,7 +311,7 @@ export async function installFabric(gameVersion: string): Promise<FabricInfo> {
   const installer = installers.find((item) => item.stable) ?? installers[0]
   if (!installer?.version) throw new Error('Не удалось получить версию установщика Fabric')
 
-  const installerUrl = legacy112
+  const installerUrl = legacyFabric
     ? `https://maven.legacyfabric.net/net/legacyfabric/fabric-installer/${encodeURIComponent(installer.version)}` +
       `/fabric-installer-${encodeURIComponent(installer.version)}.jar`
     : `https://maven.fabricmc.net/net/fabricmc/fabric-installer/${encodeURIComponent(installer.version)}` +
@@ -444,7 +450,9 @@ export async function installMod(projectId: string, gameVersion: string): Promis
 }
 
 export async function ensureFabricApi(gameVersion: string): Promise<void> {
-  if (gameVersion === '1.12.2') return
+  // The current Legacy Fabric port uses loader and mixin entry points only;
+  // the modern Fabric API project on Modrinth is not compatible with 1.8–1.13.
+  if (usesLegacyFabric(gameVersion)) return
   const files = listMods(gameVersion)
   const api = files.find((file) => file.fileName.toLowerCase().startsWith('fabric-api-'))
   if (api?.enabled) return
