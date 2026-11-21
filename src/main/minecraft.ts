@@ -35,12 +35,14 @@ function stageSempaiVisuals(gameDir: string, versionId: string, modsDir: string)
     }
   }
 
-  const wanted = `sempai-visuals-${versionId}-0.1.1.jar`
-  const source = join(variantsDir, wanted)
-  if (!existsSync(source)) {
+  const wanted = readdirSync(variantsDir).find(
+    (file) => file.startsWith(`sempai-visuals-${versionId}-`) && file.endsWith('.jar')
+  )
+  if (!wanted) {
     sendLog(`[sempai] Для Minecraft ${versionId} сборки визуального мода пока нет`)
     return false
   }
+  const source = join(variantsDir, wanted)
   const target = join(modsDir, wanted)
   for (const file of readdirSync(modsDir)) {
     if (!file.startsWith(`sempai-visuals-${versionId}-`) || !file.endsWith('.jar') || file === wanted) continue
@@ -56,12 +58,14 @@ function stageSempaiVisuals(gameDir: string, versionId: string, modsDir: string)
 }
 
 function hasBundledVisuals(gameDir: string, versionId: string): boolean {
-  const filename = `sempai-visuals-${versionId}-0.1.1.jar`
   const variantsDir = join(gameDir, 'sempai-visuals-versions')
   const bundledDir = app.isPackaged
     ? join(process.resourcesPath, 'visual-mods')
     : join(app.getAppPath(), 'release', 'mods')
-  return existsSync(join(variantsDir, filename)) || existsSync(join(bundledDir, filename))
+  const prefix = `sempai-visuals-${versionId}-`
+  const hasVariant = (dir: string): boolean => existsSync(dir) &&
+    readdirSync(dir).some((file) => file.startsWith(prefix) && file.endsWith('.jar'))
+  return hasVariant(variantsDir) || hasVariant(bundledDir)
 }
 
 function broadcast(channel: string, payload: unknown): void {
