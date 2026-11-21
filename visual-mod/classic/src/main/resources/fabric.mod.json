@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "sempai_visuals",
+  "version": "${version}",
+  "name": "Sempai Visuals",
+  "description": "Client visual menu for Minecraft ${minecraft_version}.",
+  "authors": ["Sempai"],
+  "license": "MIT",
+  "environment": "client",
+  "entrypoints": { "client": ["ru.sempai.visuals.SempaiVisualsClient"] },
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "minecraft": "=${minecraft_version}",
+    "java": ">=17",
+    "fabric-api": "*"
+  }
+}

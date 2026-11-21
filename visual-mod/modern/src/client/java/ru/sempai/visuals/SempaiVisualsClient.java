@@ -10,9 +10,9 @@ import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.text.Text;
+import net.minecraft.util.Identifier;
 import org.lwjgl.glfw.GLFW;
 
-import java.lang.reflect.Constructor;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -22,6 +22,8 @@ public final class SempaiVisualsClient implements ClientModInitializer {
     private static final Properties OPTIONS = new Properties();
     private static Path optionsFile;
     private static KeyBinding openMenu;
+    private static final KeyBinding.Category KEY_CATEGORY =
+            KeyBinding.Category.create(Identifier.of("sempai_visuals", "main"));
     private static String theme = "emerald";
     private static long nextThemeCheckAt;
     private static boolean effectsHud = true;
@@ -32,7 +34,8 @@ public final class SempaiVisualsClient implements ClientModInitializer {
     public void onInitializeClient() {
         optionsFile = FabricLoader.getInstance().getConfigDir().resolve("sempai-visuals-client.properties");
         loadOptions();
-        openMenu = KeyBindingHelper.registerKeyBinding(createOpenMenuKey());
+        openMenu = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+                "key.sempai_visuals.open_menu", GLFW.GLFW_KEY_RIGHT_SHIFT, KEY_CATEGORY));
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             refreshTheme();
             while (openMenu.wasPressed()) {
@@ -43,34 +46,6 @@ public final class SempaiVisualsClient implements ClientModInitializer {
                 }
             }
         });
-    }
-
-    private static KeyBinding createOpenMenuKey() {
-        for (Constructor<?> constructor : KeyBinding.class.getConstructors()) {
-            Class<?>[] parameters = constructor.getParameterTypes();
-            try {
-                if (parameters.length == 4 && parameters[0] == String.class && parameters[2] == int.class
-                        && parameters[3] == String.class) {
-                    Object keyType = parameters[1].getField("KEYSYM").get(null);
-                    return (KeyBinding) constructor.newInstance(
-                            "key.sempai_visuals.open_menu", keyType, GLFW.GLFW_KEY_RIGHT_SHIFT,
-                            "category.sempai_visuals");
-                }
-                if (parameters.length == 3 && parameters[0] == String.class && parameters[1] == int.class
-                        && parameters[2].getName().endsWith("KeyBinding$Category")) {
-                    Class<?> categoryType = parameters[2];
-                    Class<?> identifierType = Class.forName("net.minecraft.util.Identifier");
-                    Object id = identifierType.getMethod("of", String.class, String.class)
-                            .invoke(null, "sempai_visuals", "main");
-                    Object category = categoryType.getMethod("register", identifierType).invoke(null, id);
-                    return (KeyBinding) constructor.newInstance(
-                            "key.sempai_visuals.open_menu", GLFW.GLFW_KEY_RIGHT_SHIFT, category);
-                }
-            } catch (ReflectiveOperationException error) {
-                throw new IllegalStateException("Не удалось зарегистрировать клавишу меню Sempai", error);
-            }
-        }
-        throw new IllegalStateException("Версия Minecraft не поддерживает клавишу меню Sempai");
     }
 
     private static void refreshTheme() {
