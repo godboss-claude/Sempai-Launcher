@@ -7,7 +7,13 @@ import type { LaunchProgress, LaunchState } from '../shared/types'
 import { addPlaytime, ensureGameDir, getSettings } from './store'
 import { getVersionMeta } from './mojang'
 import { prepareJava } from './java'
-import { ensureFabricApi, getFabricInfo, getModsDirectory, installFabric } from './mods'
+import {
+  ensureFabricApi,
+  getFabricInfo,
+  getModsDirectory,
+  installFabric,
+  removeCorruptFabricLibraries
+} from './mods'
 
 const state: LaunchState & { startedAt: number | null } = {
   running: false,
@@ -173,6 +179,11 @@ export async function startLaunch(
       if (!fabric.installed && hasBundledVisuals(settings.gameDir, versionId)) {
         sendProgress('Установка Fabric', 'Подготовка загрузчика для визуального мода', null)
         fabric = await installFabric(versionId)
+      }
+      if (fabric.installed) {
+        for (const library of removeCorruptFabricLibraries(versionId)) {
+          sendLog(`[fabric] Удалён повреждённый архив; он будет скачан заново: ${library}`)
+        }
       }
       const versionModsDir = getModsDirectory(versionId)
       const hasSempaiVisuals = fabric.installed && stageSempaiVisuals(settings.gameDir, versionId, versionModsDir)

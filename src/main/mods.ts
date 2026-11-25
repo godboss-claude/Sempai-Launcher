@@ -4,13 +4,15 @@ import {
   copyFileSync,
   existsSync,
   mkdirSync,
+  readFileSync,
   readdirSync,
+  rmSync,
   renameSync,
   statSync
 } from 'node:fs'
 import { createHash } from 'node:crypto'
 import { spawn } from 'node:child_process'
-import { basename, extname, join } from 'node:path'
+import { basename, extname, join, resolve, sep } from 'node:path'
 import type { FabricInfo, ModCatalogEntry, ModEntry } from '../shared/types'
 import { getSettings } from './store'
 import { prepareJava } from './java'
@@ -287,6 +289,44 @@ export async function getFabricInfo(gameVersion: string): Promise<FabricInfo> {
   if (!existsSync(profileFile)) return { installed: false, profileId: '', loaderVersion: null }
   const loaderVersion = profileId.slice(prefix.length, -suffix.length)
   return { installed: true, profileId, loaderVersion }
+}
+
+/** Remove truncated/corrupt loader archives so the launcher core can download them again. */
+export function removeCorruptFabricLibraries(gameVersion: string): string[] {
+  const version = String(gameVersion ?? '').trim()
+  const root = getSettings().gameDir
+  let entries: string[] = []
+  try { entries = readdirSync(join(root, 'versions')) } catch { return [] }
+  const suffix = `-${version}`
+  const profileId = entries.find((entry) => entry.startsWith('fabric-loader-') && entry.endsWith(suffix))
+  if (!profileId) return []
+  const profileFile = join(root, 'versions', profileId, `${profileId}.json`)
+  try {
+    const profile = JSON.parse(readFileSync(profileFile, 'utf8')) as {
+      libraries?: Array<{ name?: string; downloads?: { artifact?: { path?: string } } }>
+    }
+    const removed: string[] = []
+    const librariesRoot = resolve(root, 'libraries') + sep
+    for (const library of profile.libraries ?? []) {
+      const coordinate = library.name?.match(/^([A-Za-z0-9_.-]+):([A-Za-z0-9_.-]+):([A-Za-z0-9_.+-]+)(?::([A-Za-z0-9_.+-]+))?(?:@([A-Za-z0-9]+))?$/)
+      if (!coordinate) continue
+      const [, group, artifact, libraryVersion, classifier, extension = 'jar'] = coordinate
+      if (extension !== 'jar') continue
+      const relativePath = library.downloads?.artifact?.path ??
+        `${group.replace(/\./g, '/')}/${artifact}/${libraryVersion}/${artifact}-${libraryVersion}${classifier ? `-${classifier}` : ''}.${extension}`
+      const filePath = resolve(root, 'libraries', relativePath)
+      if (!filePath.startsWith(librariesRoot) || !existsSync(filePath)) continue
+      try {
+        new AdmZip(filePath).getEntries()
+      } catch {
+        rmSync(filePath, { force: true })
+        removed.push(relativePath)
+      }
+    }
+    return removed
+  } catch {
+    return []
+  }
 }
 
 export async function installFabric(gameVersion: string): Promise<FabricInfo> {
